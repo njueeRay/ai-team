@@ -1,0 +1,14 @@
+# ai-team .gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json
+*.swp
+*.swo
+
+# Temp
+*.tmp
+*.log
