@@ -1,10 +1,11 @@
 # bootstrap.ps1 — ai-team 初始化脚本 (Windows PowerShell)
-# 将团队 agents/ 和 skills/ 同步到项目的 .github/ 目录
+# 将团队 agents/、skills/、docs/ 同步到项目
 # 用法：在项目根目录执行  .\.team\bootstrap.ps1
 
 param(
-    [string]$TeamDir = ".team",
-    [string]$TargetDir = ".github"
+    [string]$TeamDir   = ".team",
+    [string]$TargetDir = ".github",
+    [string]$DocsDir   = "docs"
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +17,8 @@ Write-Host "   目标: $TargetDir"
 # 确保目标目录存在
 New-Item -ItemType Directory -Path "$TargetDir\agents" -Force | Out-Null
 New-Item -ItemType Directory -Path "$TargetDir\skills" -Force | Out-Null
+New-Item -ItemType Directory -Path "$DocsDir\governance" -Force | Out-Null
+New-Item -ItemType Directory -Path "$DocsDir\guides" -Force | Out-Null
 
 # 同步 agents（.agent.md 文件）
 Write-Host ""
@@ -41,10 +44,29 @@ foreach ($dir in $skillDirs) {
     Write-Host "   ✓ $($dir.Name)/"
 }
 
+# 同步 docs/（团队级文档，不覆盖项目私有文件）
+Write-Host ""
+Write-Host "📚 同步团队文档 (docs/)..." -ForegroundColor Yellow
+$teamDocFiles = @(
+    @{ Src = "$TeamDir\docs\governance\team-playbook.md";    Dst = "$DocsDir\governance\team-playbook.md" },
+    @{ Src = "$TeamDir\docs\governance\agent-workflow.md";   Dst = "$DocsDir\governance\agent-workflow.md" },
+    @{ Src = "$TeamDir\docs\governance\tooling-scaffold.md"; Dst = "$DocsDir\governance\tooling-scaffold.md" }
+)
+foreach ($entry in $teamDocFiles) {
+    if (Test-Path $entry.Src) {
+        Copy-Item $entry.Src $entry.Dst -Force
+        Write-Host "   ✓ $($entry.Dst)"
+    }
+}
+# guides/ 整个目录
+if (Test-Path "$TeamDir\docs\guides") {
+    Copy-Item "$TeamDir\docs\guides\*" "$DocsDir\guides\" -Force -ErrorAction SilentlyContinue
+    Write-Host "   ✓ docs/guides/"
+}
+
 Write-Host ""
 Write-Host "✅ bootstrap 完成！" -ForegroundColor Green
 Write-Host ""
 Write-Host "下一步："
 Write-Host "  1. 确认 .github/copilot-instructions.md 包含项目特定信息"
-Write-Host "  2. 在 .github/copilot-instructions.md 底部可引用 .team/docs/governance/team-playbook.md"
-Write-Host "  3. 将团队文件加入 .gitignore（可选，因为已通过 submodule 管理版本）"
+Write-Host "  2. 项目私有文件（sprint-board.md / design-decisions.md）在 docs/governance/ 中单独创建"

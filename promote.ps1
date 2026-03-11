@@ -1,5 +1,5 @@
-# promote.ps1 — 将项目 .github/ 中已成熟的团队成果回写到 ai-team
-# 方向：项目 .github/agents/ + .github/skills/  →  .team/（ai-team submodule）→ 推送
+# promote.ps1 — 将项目中已成熟的团队成果回写到 ai-team
+# 方向：.github/agents/ + .github/skills/ + docs/（团队级）→  .team/（ai-team submodule）→ 推送
 #
 # 在 OpenProfile（或任何使用了 .team submodule 的项目）根目录执行：
 #   .\.team\promote.ps1
@@ -9,6 +9,7 @@
 
 param(
     [string]$SourceDir = ".github",
+    [string]$DocsDir   = "docs",
     [string]$TeamDir   = ".team",
     [string]$CommitMsg = ""
 )
@@ -50,6 +51,30 @@ foreach ($dir in $skillDirs) {
     Write-Host "   ✓ $($dir.Name)/"
 }
 
+# 同步 docs/（只回写团队级文档，不碰项目私有文件）
+Write-Host ""
+Write-Host "📚 同步团队文档 (docs/)..." -ForegroundColor Yellow
+$teamDocFiles = @(
+    @{ Src = "$DocsDir\governance\team-playbook.md";    Dst = "$TeamDir\docs\governance\team-playbook.md" },
+    @{ Src = "$DocsDir\governance\agent-workflow.md";   Dst = "$TeamDir\docs\governance\agent-workflow.md" },
+    @{ Src = "$DocsDir\governance\tooling-scaffold.md"; Dst = "$TeamDir\docs\governance\tooling-scaffold.md" }
+)
+foreach ($entry in $teamDocFiles) {
+    if (Test-Path $entry.Src) {
+        # 确保目标目录存在
+        $dstDir = Split-Path $entry.Dst -Parent
+        New-Item -ItemType Directory -Path $dstDir -Force | Out-Null
+        Copy-Item $entry.Src $entry.Dst -Force
+        Write-Host "   ✓ $(Split-Path $entry.Src -Leaf)"
+    }
+}
+# guides/ 整个目录
+if (Test-Path "$DocsDir\guides") {
+    New-Item -ItemType Directory -Path "$TeamDir\docs\guides" -Force | Out-Null
+    Copy-Item "$DocsDir\guides\*" "$TeamDir\docs\guides\" -Force -ErrorAction SilentlyContinue
+    Write-Host "   ✓ docs/guides/"
+}
+
 # 在 .team 目录内 commit 并 push
 Write-Host ""
 Write-Host "📦 提交到 ai-team 仓库..." -ForegroundColor Yellow
@@ -60,7 +85,7 @@ if (-not $hasChanges) {
     Write-Host "   没有变更，跳过提交。" -ForegroundColor Gray
     Pop-Location
 } else {
-    git add agents/ skills/
+    git add agents/ skills/ docs/
 
     if ($CommitMsg -eq "") {
         $date = Get-Date -Format "yyyy-MM-dd"
