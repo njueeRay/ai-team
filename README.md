@@ -34,34 +34,85 @@
 
 ---
 
-## 在新项目中使用
+## 三层工作流模型
+
+```
+OpenProfile .github/          ai-team (本仓库)        新项目 .github/
+【活体实验室】                 【版本快照】             【独立演化】
+
+  团队在真实项目中成长   →promote→  稳定后打版本  →bootstrap→  直接开工
+  .github/agents/               agents/                .github/agents/
+  .github/skills/               skills/                .github/skills/
+```
+
+**单向流动规则：**
+- `OpenProfile → ai-team`：团队成熟一个里程碑后，手动 promote 回写
+- `ai-team → 新项目`：新项目拉取 submodule + 运行 bootstrap 即可
+- 新项目**不向** ai-team 回流（各自独立演化）
+
+---
+
+## 在新项目中使用（bootstrap 方向）
 
 ### 1. 添加 submodule
 
 ```bash
 git submodule add https://github.com/njueeRay/ai-team .team
-git submodule update --init --recursive
+git submodule update --init
 ```
 
-### 2. 初始化团队到项目（Windows / PowerShell）
+### 2. 同步团队到 .github/（Windows / PowerShell）
 
 ```powershell
 .\.team\bootstrap.ps1
 ```
 
-这会将 `agents/` 和 `skills/` 同步到 `.github/`，让 GitHub Copilot 能自动识别所有 Agent 和 Skill。
+这会将 `agents/` 和 `skills/` 复制到 `.github/`，GitHub Copilot 即刻识别全部 Agent 和 Skill。
 
 ### 3. 补充项目层配置
 
-编辑 `.github/copilot-instructions.md`，在文件顶部写入项目特定信息（目标、个人信息、设计决策等），
-团队通用规范在 bootstrap 时已经注入。
+编辑 `.github/copilot-instructions.md`，写入项目特定信息（目标、个人信息、设计决策等）。
+团队通用部分已由 bootstrap 注入，无需重复。
 
-### 4. 获取团队更新
+### 4. 获取团队版本更新（可选）
 
 ```bash
-git submodule update --remote .team
-.\.team\bootstrap.ps1   # 重新同步
+git submodule update --remote .team   # 拉取 ai-team 最新版
+.\.team\bootstrap.ps1                  # 重新同步到 .github/
 ```
+
+---
+
+## 从 OpenProfile 回写团队（promote 方向）
+
+当团队在 OpenProfile 中成长成熟，需要固化到 ai-team 时：
+
+```powershell
+# 在 OpenProfile 根目录执行
+.\.team\promote.ps1
+
+# 完成后更新 submodule 指针
+git add .team
+git commit -m "chore: update ai-team submodule to vX.Y"
+git push origin main
+```
+
+promote 脚本会自动：
+1. 将 `.github/agents/` + `.github/skills/` 复制到 `.team/`
+2. 在 ai-team 仓库内 commit + push
+3. 提示你更新 OpenProfile 中的 submodule 指针
+
+---
+
+## 边界规则：什么进 ai-team，什么留在项目里
+
+| 进 ai-team（跨项目通用） | 留在项目（项目私有） |
+|---|---|
+| `agents/*.agent.md` — 角色定义 | `.github/copilot-instructions.md` — 项目目标/个人信息 |
+| `agents/knowledge/` — 学习记忆 | `docs/governance/sprint-board.md` — Sprint 状态 |
+| `skills/*/SKILL.md` — 技能库 | `docs/governance/design-decisions.md` — 设计决策 |
+| `docs/governance/team-playbook.md` — 方法论 | `.github/workflows/` — CI/CD |
+| `docs/governance/agent-workflow.md` — 协作流程 | `docs/brand/`、`docs/meetings/` 等 |
 
 ---
 
@@ -79,8 +130,8 @@ ai-team/
       tooling-scaffold.md    ← 工具脚手架规范
     guides/
       component-guide.md     ← 组件使用指南
-  bootstrap.ps1              ← Windows 一键初始化脚本
-  bootstrap.sh               ← Linux/macOS 一键初始化脚本
+  bootstrap.ps1 / bootstrap.sh   ← 新项目初始化（.team → .github）
+  promote.ps1 / promote.sh       ← 团队回写（.github → .team → push）
   README.md
 ```
 
